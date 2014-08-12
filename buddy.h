@@ -9,16 +9,24 @@ extern "C" {
  * non-thread safe
  */
 
+#ifndef MAX
+#define MAX(a,b) (((a) >= (b)) ? (a) : (b))
+#endif
+
+#ifndef MIN
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
 struct buddy;
 
 struct buddy *buddy_new(unsigned int size);
 void buddy_delete(struct buddy *buddy);
 
-void *buddy_malloc(struct buddy *buddy, unsigned int size);
-void buddy_free(struct buddy *buddy, void *p);
+int buddy_alloc(struct buddy *buddy, unsigned int size, unsigned int *offset);
+void buddy_free(struct buddy *buddy, unsigned int offset);
 
+unsigned int buddy_size(struct buddy *buddy, unsigned int *free_size);
 void buddy_dump(struct buddy *buddy);
-void buddy_size(struct buddy *buddy, unsigned int *size, unsigned int *alloc_size, unsigned int *free_size);
 
 #ifdef __cplusplus
 }
