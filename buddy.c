@@ -9,7 +9,7 @@
 
 #define LEFT_INDEX(i)       (2 * (i) + 1)
 #define RIGHT_INDEX(i)      (LEFT_INDEX(i)+1)
-#define PARENT_IDX(i)       ((((i) % 2) == 0) ? ((i) / 2 - 1) : (((i)+1) / 2 - 1))
+#define PARENT_IDX(i)       (((i) - 1) / 2)
 
 #define SET_BITMAP(b, i, v) (b->bitmap[(i)] = v)
 #define GET_BITMAP(b, i)    (b->bitmap[(i)])               
@@ -46,6 +46,8 @@ static unsigned int _fixsize(unsigned int size)
 {
     unsigned char i;
 
+    if (POW_OF_2(size))
+        return size;
     for (i = sizeof(size) * 8 - 1; i > 0 && i <= sizeof(size) * 8 - 1; i--) {
         if (size >> i)
             return (unsigned int) pow(2, i+1);
@@ -56,7 +58,7 @@ static unsigned int _fixsize(unsigned int size)
 struct buddy *buddy_new(unsigned int size)
 {
     struct buddy *buddy;
-    unsigned int i;
+    unsigned int i, j;
     unsigned char depth;
 
     if (!POW_OF_2(size) || size < 2)
@@ -64,14 +66,12 @@ struct buddy *buddy_new(unsigned int size)
 
     buddy = (struct buddy *) malloc(sizeof(struct buddy) + sizeof(unsigned char) * (2*size-1));
     if (buddy) {
-        /* mark log(2, size) + 1 */
-        depth = buddy->depth = _lb(size) + 1;
         buddy->alloc_size = 0;
         buddy->size = size;
-        for (i = 0; i < 2 * size; i++) {
-            SET_BITMAP(buddy, i, depth);
-            if (POW_OF_2(i+2))
-                depth--;
+        /* mark log(2, size) + 1 */
+        buddy->depth = depth = _lb(size) + 1;
+        for (i = 0, j = 1; i < depth; i++, j *= 2) {
+            memset(&buddy->bitmap[j - 1], depth - i, j * sizeof(unsigned char));
         }
     }
     return buddy;
@@ -89,8 +89,7 @@ int buddy_alloc(struct buddy *buddy, unsigned int size, unsigned int *offset)
 
     if (size == 0)
         return -1;
-    if (!POW_OF_2(size))
-        size = _fixsize(size);
+    size = _fixsize(size);
     alloc_depth = _lb(size) + 1;
     if (GET_BITMAP(buddy, 0) < alloc_depth)
         return -1;
@@ -114,22 +113,27 @@ int buddy_alloc(struct buddy *buddy, unsigned int size, unsigned int *offset)
 
 void buddy_free(struct buddy *buddy, unsigned int offset)
 {
-    unsigned int i, count, p_idx = pow(2, buddy->depth-1) - 1 + offset;
+    unsigned int i, count = 0, p_idx = pow(2, buddy->depth-1) - 1 + offset;
 
-    for (i = count = 0; p_idx; i++, p_idx = PARENT_IDX(p_idx)) {
-        /* the first node having bitmap is 0 */
+    if (GET_BITMAP(buddy, p_idx) == 0) {
+        buddy->alloc_size -= pow(2, 0);
+        count = 1;
+    }
+    SET_BITMAP(buddy, p_idx, 1);
+
+    for (i = 0; p_idx; i++) {
+        p_idx = PARENT_IDX(p_idx);
+
         if (count == 0 && GET_BITMAP(buddy, p_idx) == 0) {
-            buddy->alloc_size -= pow(2, i);
-            count++;
+            buddy->alloc_size -= pow(2, i+1);
+            count = 1;
         }
-        if (i > 0) {
-            /* reset depth or child's max depth */
-            if (EQUAL_CHILD(buddy, p_idx))
-                SET_BITMAP(buddy, p_idx, i+1);
-            else
-                SET_MAX_CHILD(buddy, p_idx);
-        } else
-            SET_BITMAP(buddy, p_idx, 1);
+
+        /* reset depth or child's max depth */
+        if (EQUAL_CHILD(buddy, p_idx))
+            SET_BITMAP(buddy, p_idx, i+2);
+        else
+            SET_MAX_CHILD(buddy, p_idx);
     }
 }
 

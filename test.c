@@ -11,9 +11,10 @@ static int _test_size(struct buddy *buddy, unsigned int size)
     int rc;
 
     if ((rc = buddy_alloc(buddy, size, &offset)) == 0)
-        printf("%s> size=%d, offset=%d\n", __FUNCTION__, size, offset);
+        printf("%s>size=%d, offset=%d\n", __FUNCTION__, size, offset);
     else
-        printf("%s> size=%d fail\n", __FUNCTION__, size);
+        printf("%s>size=%d fail\n", __FUNCTION__, size);
+    buddy_dump(buddy);
     return rc;
 }
 
@@ -41,13 +42,14 @@ static int _arg(int argc, char **argv)
     _test_size(buddy, 1);
 
     buddy_free(buddy, 4);
+    buddy_dump(buddy);
 
     _test_size(buddy, 4);
-    _test_size(buddy, 5);
-    
+    _test_size(buddy, 6);
     _test_size(buddy, 7);
 
-    buddy_free(buddy, 12);
+    buddy_free(buddy, 8);
+    buddy_dump(buddy);
 
     _test_size(buddy, 4);
 
@@ -56,7 +58,6 @@ static int _arg(int argc, char **argv)
 
     _test_size(buddy, 9);
 
-    buddy_dump(buddy);
     printf("success!\n");
     goto end;
 fail:
