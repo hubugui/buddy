@@ -12,7 +12,7 @@
 #define PARENT_IDX(i)       ((((i) % 2) == 0) ? ((i) / 2 - 1) : (((i)+1) / 2 - 1))
 
 #define SET_BITMAP(b, i, v) (b->bitmap[(i)] = v)
-#define GET_BITMAP(b, i)    (b->bitmap[(i)])                            
+#define GET_BITMAP(b, i)    (b->bitmap[(i)])               
 
 #define MAX_CHILD(b, i)     MAX(GET_BITMAP(b, LEFT_INDEX(i)), GET_BITMAP(b, RIGHT_INDEX(i)))
 #define SET_MAX_CHILD(b, i) SET_BITMAP(b, i, MAX_CHILD(b, i))
@@ -117,11 +117,13 @@ void buddy_free(struct buddy *buddy, unsigned int offset)
     unsigned int i, count, p_idx = pow(2, buddy->depth-1) - 1 + offset;
 
     for (i = count = 0; p_idx; i++, p_idx = PARENT_IDX(p_idx)) {
+        /* the first node having bitmap is 0 */
         if (count == 0 && GET_BITMAP(buddy, p_idx) == 0) {
             buddy->alloc_size -= pow(2, i);
             count++;
         }
         if (i > 0) {
+            /* reset depth or child's max depth */
             if (EQUAL_CHILD(buddy, p_idx))
                 SET_BITMAP(buddy, p_idx, i+1);
             else

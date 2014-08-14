@@ -43,11 +43,18 @@ static int _arg(int argc, char **argv)
     buddy_free(buddy, 4);
 
     _test_size(buddy, 4);
-    _test_size(buddy, 4);
+    _test_size(buddy, 5);
     
+    _test_size(buddy, 7);
+
     buddy_free(buddy, 12);
 
     _test_size(buddy, 4);
+
+    buddy_free(buddy, 0);
+    buddy_free(buddy, 1);
+
+    _test_size(buddy, 9);
 
     buddy_dump(buddy);
     printf("success!\n");
