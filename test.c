@@ -35,17 +35,23 @@ static int _arg(int argc, char **argv)
     }
     buddy_dump(buddy);
 
-    assert(!_test_size(buddy, 1));
-    assert(!_test_size(buddy, 2));
-    assert(!_test_size(buddy, 3));
-    assert(!_test_size(buddy, 4));
-    assert(!_test_size(buddy, 4));
-    //assert(!_test_size(buddy, 1));
+    _test_size(buddy, 1);
+    _test_size(buddy, 2);
+    _test_size(buddy, 3);
+    _test_size(buddy, 1);
+
+    buddy_free(buddy, 4);
+
+    _test_size(buddy, 4);
+    _test_size(buddy, 4);
+    
+    buddy_free(buddy, 12);
+
+    _test_size(buddy, 4);
 
     buddy_dump(buddy);
     printf("success!\n");
-success:
-    goto end;    
+    goto end;
 fail:
     rc = -1;
 end:
