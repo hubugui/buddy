@@ -64,13 +64,14 @@ struct buddy *buddy_new(unsigned int size)
     if (!POW_OF_2(size) || size < 2)
         return NULL;
 
-    buddy = (struct buddy *) malloc(sizeof(struct buddy) + sizeof(unsigned char) * (2*size-1));
+    buddy = malloc(sizeof(struct buddy) + sizeof(unsigned char) * (2*size-1));
     if (buddy) {
         buddy->alloc_size = 0;
         buddy->size = size;
         /* mark log(2, size) + 1 */
         buddy->depth = depth = _lb(size) + 1;
         for (i = 0, j = 1; i < depth; i++, j *= 2) {
+            /* 5 44 3333 22222222 1111111111111111 */
             memset(&buddy->bitmap[j - 1], depth - i, j * sizeof(unsigned char));
         }
     }
@@ -90,6 +91,7 @@ int buddy_alloc(struct buddy *buddy, unsigned int size, unsigned int *offset)
     if (size == 0)
         return -1;
     size = _fixsize(size);
+    /* plus 1 */
     alloc_depth = _lb(size) + 1;
     if (GET_BITMAP(buddy, 0) < alloc_depth)
         return -1;
@@ -101,39 +103,41 @@ int buddy_alloc(struct buddy *buddy, unsigned int size, unsigned int *offset)
         else
             i = RIGHT_INDEX(i);
     }
+    /* 0 as used state */
     SET_BITMAP(buddy, i, 0);
 
+    /* set max child's value */
     for (p_idx = i; p_idx;) {
         p_idx = PARENT_IDX(p_idx);
         SET_MAX_CHILD(buddy, p_idx);
     }
-    *offset = pow(2, depth-1) * (i + 1 - pow(2, (buddy->depth - depth)));
+    *offset = size * (i + 1) - buddy->size;
     return 0;
 }
 
 void buddy_free(struct buddy *buddy, unsigned int offset)
 {
-    unsigned int i, count = 0, p_idx = pow(2, buddy->depth-1) - 1 + offset;
+    unsigned int i = 0, count = 0, p_idx = buddy->size - 1 + offset;
 
-    if (GET_BITMAP(buddy, p_idx) == 0) {
-        buddy->alloc_size -= pow(2, 0);
-        count = 1;
-    }
-    SET_BITMAP(buddy, p_idx, 1);
-
-    for (i = 0; p_idx; i++) {
-        p_idx = PARENT_IDX(p_idx);
-
+    while (1) {
         if (count == 0 && GET_BITMAP(buddy, p_idx) == 0) {
-            buddy->alloc_size -= pow(2, i+1);
+            buddy->alloc_size -= pow(2, i);
             count = 1;
         }
+        if (i++ == 0)
+            SET_BITMAP(buddy, p_idx, 1);
+        else {
+            /* reset depth or max child's depth */
+            if (EQUAL_CHILD(buddy, p_idx))
+                SET_BITMAP(buddy, p_idx, i);
+            else
+                SET_MAX_CHILD(buddy, p_idx);
+        }
 
-        /* reset depth or child's max depth */
-        if (EQUAL_CHILD(buddy, p_idx))
-            SET_BITMAP(buddy, p_idx, i+2);
+        if (p_idx > 0)
+            p_idx = PARENT_IDX(p_idx);
         else
-            SET_MAX_CHILD(buddy, p_idx);
+            break;
     }
 }
 
@@ -142,7 +146,7 @@ unsigned int buddy_size(struct buddy *buddy, unsigned int *free_size)
     *free_size = buddy->size - buddy->alloc_size;
     return buddy->size;
 }
-
+    
 void buddy_dump(struct buddy *buddy)
 {
     unsigned int i, size, free_size;
